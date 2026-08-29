@@ -44,7 +44,7 @@ GATE_SENS_SHARPE = 0.3         # every sensitivity run must clear this
 BASE = {k: getattr(config, k) for k in
         ("MODE", "MOM_FAST", "MOM_SLOW", "MOM_TOP_N", "RSI_ENTRY", "RSI_EXIT",
          "TRAIL_ATR_MULT", "CORE_SLOTS", "PULLBACK_SLOTS", "RISK_PER_TRADE",
-         "MAX_POS_PCT", "REGIME_SMA")}
+         "MAX_POS_PCT", "REGIME_SMA", "PULLBACK_NEED_MOM")}
 
 VARIANTS = {
     "apex_hybrid":      {},
@@ -52,6 +52,11 @@ VARIANTS = {
     "pullback_only":    {"MODE": "pullback_only"},
     "etf_rotation":     {"MODE": "core_only", "_universe": "etf"},
     "tilted_pullback":  {"CORE_SLOTS": 2, "PULLBACK_SLOTS": 4, "RSI_ENTRY": 15.0},
+    # research round 2 --------------------------------------------------
+    "pure_rsi2":        {"MODE": "pullback_only", "PULLBACK_NEED_MOM": False},
+    "fast_momentum":    {"MOM_FAST": 10, "MOM_SLOW": 42, "MOM_TOP_N": 6},
+    "tight_stops":      {"TRAIL_ATR_MULT": 2.0, "RISK_PER_TRADE": 0.015},
+    "conservative":     {"RISK_PER_TRADE": 0.005, "MAX_POS_PCT": 0.12},
 }
 
 SENS_GRID = {
@@ -189,9 +194,10 @@ def main():
                  f"**{'CLEARED FOR LIVE DEPLOYMENT' if champion_ok else 'NOT CLEARED — do not deploy'}**")
 
     report = "\n".join(lines)
-    (config.BASE_DIR / "validation_report.md").write_text(report)
+    out_name = "validation_quick.md" if args.quick else "validation_report.md"
+    (config.BASE_DIR / out_name).write_text(report)
     print(report)
-    print(f"\nwritten: validation_report.md")
+    print(f"\nwritten: {out_name}")
 
 
 if __name__ == "__main__":
