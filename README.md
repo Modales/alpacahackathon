@@ -56,13 +56,18 @@ trailing stops checked daily **and intraday**; −2.5% daily kill switch.
 |---|---|---|---|
 | **apex_hybrid** (deployed) | 0.26 | **1.11** | ✅ DEPLOY — all gates pass |
 | **etf_rotation** (alternate) | 0.39 | **1.10** | ✅ DEPLOY-able |
+| fast_momentum | 0.20 | 1.08 | ✅ DEPLOY-able |
+| conservative | 0.15 | 1.04 | ✅ DEPLOY-able |
+| tight_stops | 0.47 | 0.88 | ✅ DEPLOY-able |
 | core_momentum | 0.73 | 0.74 | ❌ REJECT (negative fold) |
+| tilted_pullback | −0.07 | 0.60 | ❌ REJECT (negative fold) |
+| pure_rsi2 (no mom filter) | −0.24 | 0.34 | ❌ REJECT |
 | pullback_only | 0.21 | 0.09 | ❌ REJECT |
-| tilted_pullback | −0.07 | 0.60 | ❌ REJECT |
 
 Champion sensitivity: **all 18 perturbations stay profitable** (Sharpe 0.51–0.93)
-— a plateau, not a curve-fit spike. 3 of 5 researched strategies were rejected
-and never touched the live account.
+— a plateau, not a curve-fit spike. 4 of 9 researched strategies were rejected
+and never touched the live account. Research finding: the momentum filter is
+what makes RSI(2) pullbacks work — pure reversion (pure_rsi2) fails the gates.
 
 **Backtest, champion config (2024-06 → 2026-08, next-open fills, 5 bps slippage):**
 +38.4% total return, Sharpe 1.51, Sortino 2.09, maxDD −10.8%, 250 trades,
