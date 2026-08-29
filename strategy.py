@@ -102,6 +102,8 @@ def evaluate_symbol(sym, bars, scores):
     score = scores.get(sym)
     elig = score is not None and score > 0 and \
         sym in set(list(sorted(scores, key=scores.get, reverse=True))[: config.MOM_TOP_N])
+    if not config.PULLBACK_NEED_MOM:
+        elig = score is not None  # pure reversion: only need data, not rank
     return {
         "symbol": sym,
         "close": closes[-1] if closes else None,

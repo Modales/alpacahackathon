@@ -22,6 +22,18 @@ Data: 2024-06-03 -> 2026-08-28 (IEX feed, next-open execution, 5 bps slippage). 
 | tilted_pullback | 2025-01..2025-06 | 2025-01-02..2025-06-30 | -3.1% | -0.48 | -12.8% | 80 |
 | tilted_pullback | 2025-07..2025-12 | 2025-07-01..2025-12-31 | +12.1% | 1.41 | -6.4% | 112 |
 | tilted_pullback | 2026-01..2026-08 | 2026-01-02..2026-08-28 | +7.9% | 0.86 | -9.3% | 123 |
+| pure_rsi2 | 2025-01..2025-06 | 2025-01-02..2025-06-30 | -1.8% | -0.42 | -9.1% | 86 |
+| pure_rsi2 | 2025-07..2025-12 | 2025-07-01..2025-12-31 | +0.8% | 0.23 | -5.9% | 135 |
+| pure_rsi2 | 2026-01..2026-08 | 2026-01-02..2026-08-28 | +8.4% | 1.20 | -4.8% | 223 |
+| fast_momentum | 2025-01..2025-06 | 2025-01-02..2025-06-30 | +3.2% | 0.65 | -8.7% | 68 |
+| fast_momentum | 2025-07..2025-12 | 2025-07-01..2025-12-31 | +14.9% | 1.84 | -6.6% | 95 |
+| fast_momentum | 2026-01..2026-08 | 2026-01-02..2026-08-28 | +6.5% | 0.74 | -10.2% | 123 |
+| tight_stops | 2025-01..2025-06 | 2025-01-02..2025-06-30 | +1.0% | 0.21 | -14.4% | 77 |
+| tight_stops | 2025-07..2025-12 | 2025-07-01..2025-12-31 | +15.1% | 1.50 | -10.4% | 92 |
+| tight_stops | 2026-01..2026-08 | 2026-01-02..2026-08-28 | +10.6% | 0.93 | -12.8% | 125 |
+| conservative | 2025-01..2025-06 | 2025-01-02..2025-06-30 | +1.2% | 0.42 | -6.5% | 80 |
+| conservative | 2025-07..2025-12 | 2025-07-01..2025-12-31 | +10.5% | 2.13 | -3.2% | 105 |
+| conservative | 2026-01..2026-08 | 2026-01-02..2026-08-28 | +3.0% | 0.58 | -5.6% | 132 |
 
 ## 2. Deployment gates
 
@@ -32,6 +44,10 @@ Data: 2024-06-03 -> 2026-08-28 (IEX feed, next-open execution, 5 bps slippage). 
 | pullback_only | 0.21 | 0.09 | OOS Sharpe >= 0.5 (mean), every fold Sharpe > 0, degradation < 50% | REJECT |
 | etf_rotation | 0.39 | 1.10 | all pass | DEPLOY |
 | tilted_pullback | -0.07 | 0.60 | every fold Sharpe > 0 | REJECT |
+| pure_rsi2 | -0.24 | 0.34 | OOS Sharpe >= 0.5 (mean), every fold Sharpe > 0 | REJECT |
+| fast_momentum | 0.20 | 1.08 | all pass | DEPLOY |
+| tight_stops | 0.47 | 0.88 | all pass | DEPLOY |
+| conservative | 0.15 | 1.04 | all pass | DEPLOY |
 
 ## 3. Parameter sensitivity (champion: apex_hybrid, full period)
 
