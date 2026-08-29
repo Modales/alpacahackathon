@@ -53,6 +53,7 @@ MOM_TOP_N = 8            # only top-N momentum names are eligible
 RSI_PERIOD = 2           # 2-day RSI pullback trigger
 RSI_ENTRY = 10.0         # buy when RSI(2) <= this on an eligible leader
 RSI_EXIT = 70.0          # take profit when RSI(2) >= this
+PULLBACK_NEED_MOM = True  # False = pure RSI(2) reversion, no momentum filter
 ATR_PERIOD = 14
 TRAIL_ATR_MULT = 2.5     # trailing stop distance in ATRs
 REGIME_SMA = 200         # SPY above SMA200 => risk-on
