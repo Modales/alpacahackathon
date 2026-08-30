@@ -44,7 +44,12 @@ GATE_SENS_SHARPE = 0.3         # every sensitivity run must clear this
 BASE = {k: getattr(config, k) for k in
         ("MODE", "MOM_FAST", "MOM_SLOW", "MOM_TOP_N", "RSI_ENTRY", "RSI_EXIT",
          "TRAIL_ATR_MULT", "CORE_SLOTS", "PULLBACK_SLOTS", "RISK_PER_TRADE",
-         "MAX_POS_PCT", "REGIME_SMA", "PULLBACK_NEED_MOM")}
+         "MAX_POS_PCT", "REGIME_SMA", "PULLBACK_NEED_MOM", "AUTOCORR_GATE",
+         "PERSIST_GATE", "VOV_GATE", "FLOW_MOMENTUM")}
+# The harness always ablates from a flags-off base, regardless of what the
+# live deployment currently uses — variants must name their flags explicitly.
+for _f in ("AUTOCORR_GATE", "PERSIST_GATE", "VOV_GATE", "FLOW_MOMENTUM"):
+    BASE[_f] = False
 
 VARIANTS = {
     "apex_hybrid":      {},
@@ -57,6 +62,11 @@ VARIANTS = {
     "fast_momentum":    {"MOM_FAST": 10, "MOM_SLOW": 42, "MOM_TOP_N": 6},
     "tight_stops":      {"TRAIL_ATR_MULT": 2.0, "RISK_PER_TRADE": 0.015},
     "conservative":     {"RISK_PER_TRADE": 0.005, "MAX_POS_PCT": 0.12},
+    # research round 3: novel-alpha hypotheses (gates on top of hybrid) --
+    "rho_gate":         {"AUTOCORR_GATE": True},   # lag-1 autocorr < 0 required
+    "persist_gate":     {"PERSIST_GATE": True},    # sign-change z > 0 required
+    "vov_gate":         {"VOV_GATE": True},        # vol-of-vol pct > 2/3 required
+    "flow_momentum":    {"FLOW_MOMENTUM": True},   # intraday-flow ranking
 }
 
 SENS_GRID = {
