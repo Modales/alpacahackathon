@@ -89,7 +89,8 @@ def run(data, start_cash=100_000.0):
                 bars_by_sym[sym] = bars_upto(sym, i)
         spy_bars = bars_upto(config.REGIME_SYMBOL, i)
         on = strategy.regime_on(spy_bars)
-        scores = strategy.rank_universe(bars_by_sym)
+        scores = (strategy.rank_universe_flow(bars_by_sym) if config.FLOW_MOMENTUM
+                  else strategy.rank_universe(bars_by_sym))
         core_set = strategy.core_targets(scores, on) if config.MODE != "pullback_only" else set()
         exec_date = dates[i + 1]
 
