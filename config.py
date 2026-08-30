@@ -55,6 +55,15 @@ RSI_ENTRY = 10.0         # buy when RSI(2) <= this on an eligible leader
 RSI_EXIT = 70.0          # take profit when RSI(2) >= this
 PULLBACK_NEED_MOM = True  # False = pure RSI(2) reversion, no momentum filter
 ATR_PERIOD = 14
+
+# --- Novel-alpha hypothesis flags (research lab; validated in round 3) -------
+# FLOW_MOMENTUM won the round-3 tournament: OOS Sharpe 1.20 vs base 1.11, own
+# 18-perturbation sensitivity plateau passed (worst 0.49). Now the live ranking.
+# Set APEX_FLOW_MOMENTUM=false to revert to close-close momentum (apex_hybrid).
+AUTOCORR_GATE = os.environ.get("APEX_AUTOCORR_GATE", "false").lower() == "true"
+PERSIST_GATE = os.environ.get("APEX_PERSIST_GATE", "false").lower() == "true"
+VOV_GATE = os.environ.get("APEX_VOV_GATE", "false").lower() == "true"
+FLOW_MOMENTUM = os.environ.get("APEX_FLOW_MOMENTUM", "true").lower() == "true"
 TRAIL_ATR_MULT = 2.5     # trailing stop distance in ATRs
 REGIME_SMA = 200         # SPY above SMA200 => risk-on
 
