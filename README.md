@@ -3,12 +3,12 @@
 **lablab.ai × Alpaca — AI Trading Agents Hackathon** · Track: Options Alpha Agents
 
 APEX is an autonomous, fully rule-based trading agent running 24/7 on Alpaca's
-paper API. It combines a validated equity engine (momentum core + RSI(2)
-pullback) with an options income overlay (cash-secured puts + covered calls —
-the "wheel") driven by the same signals. Every decision is produced by explicit,
-inspectable code shared verbatim between the backtester, the validation
-harness, and the live agent. Nothing deploys unless it clears out-of-sample
-gates.
+paper API. It combines a validated equity engine (intraday-flow momentum core +
+RSI(2) pullback) with an options income overlay (cash-secured puts + covered
+calls — the "wheel") driven by the same signals. Every decision is produced by
+explicit, inspectable code shared verbatim between the backtester, the
+validation harness, and the live agent. Nothing deploys unless it clears
+out-of-sample gates.
 
 ## Judging-criteria map
 
@@ -16,7 +16,7 @@ gates.
 |---|---|
 | **P&L Performance** | Live equity curve (`state/equity.csv`, `report.png`), trade ledger (`state/trades.csv`), backtest + OOS results below |
 | **Technology Implementation** | Dependency-free REST client w/ retries, official `alpaca-py` SDK reconciliation, walk-forward harness, disk-cached data layer, idempotent agent loop, scheduled 2×/day via cron automation |
-| **Creativity & Originality** | Signal-keyed options wheel: pullback dips are sold as cash-secured puts (paid to wait), core winners ≥100 sh write covered calls; anti-overfitting research lab that *rejects* most strategies it tests |
+| **Creativity & Originality** | Novel-alpha research lab (round 3 below): intraday-flow momentum ranking deployed; 3 original gate hypotheses tested and honestly rejected; signal-keyed options wheel (CSPs on pullback dips, covered calls on 100+ sh winners) |
 | **Presentation & Execution** | This README, `validation_report.md`, `backtest_equity.svg`, `report.py` live charts |
 
 ## Strategy
@@ -28,7 +28,8 @@ GOOGL META AMD AVGO JPM TSLA), long-only equities + short options premium.
 and rotates the core sleeve to cash.
 
 **Equity engine**
-- *Core sleeve (≤3):* hold top-3 by momentum score `0.5×ret(21d)+0.5×ret(63d)`,
+- *Core sleeve (≤3):* hold top-3 by momentum score (intraday-flow ranking,
+  round-3 winner: `0.5×close-close score + 0.5×Σ log(close/open)` over 63d),
   positive scores only; rotate on rank loss or regime flip.
 - *Pullback sleeve (≤3):* eligible = score > 0 and top-8; enter when RSI(2) ≤ 10;
   exit at RSI(2) ≥ 70, momentum decay, or trailing stop.
@@ -54,7 +55,7 @@ trailing stops checked daily **and intraday**; −2.5% daily kill switch.
 
 | variant | IS Sharpe | OOS Sharpe | verdict |
 |---|---|---|---|
-| **apex_hybrid** (deployed) | 0.26 | **1.11** | ✅ DEPLOY — all gates pass |
+| **apex_hybrid** | 0.26 | **1.11** | ✅ DEPLOY — all gates pass |
 | **etf_rotation** (alternate) | 0.39 | **1.10** | ✅ DEPLOY-able |
 | fast_momentum | 0.20 | 1.08 | ✅ DEPLOY-able |
 | conservative | 0.15 | 1.04 | ✅ DEPLOY-able |
@@ -65,9 +66,28 @@ trailing stops checked daily **and intraday**; −2.5% daily kill switch.
 | pullback_only | 0.21 | 0.09 | ❌ REJECT |
 
 Champion sensitivity: **all 18 perturbations stay profitable** (Sharpe 0.51–0.93)
-— a plateau, not a curve-fit spike. 4 of 9 researched strategies were rejected
-and never touched the live account. Research finding: the momentum filter is
+— a plateau, not a curve-fit spike. Research finding: the momentum filter is
 what makes RSI(2) pullbacks work — pure reversion (pure_rsi2) fails the gates.
+
+### Round 3 — novel-alpha hypotheses (original research)
+
+Four original signal hypotheses, ablated on top of the base engine and put
+through the same pre-registered gates:
+
+| hypothesis | idea | OOS Sharpe | verdict |
+|---|---|---|---|
+| **flow_momentum** | rank by intraday-flow momentum (Σ log close/open) — institutional accumulation shows up intraday; gap-driven moves carry reversal risk | **1.20** | ✅ **DEPLOYED as the live ranking** |
+| rho_gate | pullback entries only when lag-1 autocorr(20d) < 0 (provably mean-reverting microstructure) | 0.83 | ❌ REJECT (neg. fold) |
+| persist_gate | entries only when sign-change z-score(40d) > 0 (anti-persistent vs random-walk null) | 0.84 | ❌ REJECT (neg. fold) |
+| vov_gate | entries only when vol-of-vol percentile(1y) > 2/3 (panic overshoots bounce harder) | 0.79 | ❌ REJECT (neg. fold) |
+
+`flow_momentum` beat the base champion out-of-sample (1.20 vs 1.11), then
+passed **its own** 18-perturbation sensitivity plateau (worst-case Sharpe 0.49,
+full-period +36.5% / Sharpe 0.98 vs base +32.5% / 0.86) before being promoted.
+*Honest caveat:* 13 variants were tested, so multiple-comparison risk exists —
+the live paper ledger is the final arbiter. The three rejected gates remain in
+`strategy.py` as documented negative results. Revert with
+`APEX_FLOW_MOMENTUM=false`.
 
 **Backtest, champion config (2024-06 → 2026-08, next-open fills, 5 bps slippage):**
 +38.4% total return, Sharpe 1.51, Sortino 2.09, maxDD −10.8%, 250 trades,
@@ -88,7 +108,7 @@ historical option-chain backtests (no free historical chains).
 ```
 config.py           all parameters (secrets via .env, never committed)
 alpaca_client.py    dependency-free REST wrapper (trading + data, retries)
-strategy.py         indicators & rules — pure functions (backtest == live)
+strategy.py         indicators & rules + novel-alpha lab — pure functions
 risk.py             ATR sizing, trailing stops, guards, kill switch
 options_overlay.py  CSP + covered-call selection, profit-take management
 reconcile.py        independent position check via official alpaca-py SDK

@@ -34,6 +34,18 @@ Data: 2024-06-03 -> 2026-08-28 (IEX feed, next-open execution, 5 bps slippage). 
 | conservative | 2025-01..2025-06 | 2025-01-02..2025-06-30 | +1.2% | 0.42 | -6.5% | 80 |
 | conservative | 2025-07..2025-12 | 2025-07-01..2025-12-31 | +10.5% | 2.13 | -3.2% | 105 |
 | conservative | 2026-01..2026-08 | 2026-01-02..2026-08-28 | +3.0% | 0.58 | -5.6% | 132 |
+| rho_gate | 2025-01..2025-06 | 2025-01-02..2025-06-30 | -0.7% | -0.07 | -12.3% | 67 |
+| rho_gate | 2025-07..2025-12 | 2025-07-01..2025-12-31 | +14.6% | 1.74 | -7.8% | 81 |
+| rho_gate | 2026-01..2026-08 | 2026-01-02..2026-08-28 | +7.5% | 0.82 | -11.0% | 104 |
+| persist_gate | 2025-01..2025-06 | 2025-01-02..2025-06-30 | -0.9% | -0.12 | -10.7% | 65 |
+| persist_gate | 2025-07..2025-12 | 2025-07-01..2025-12-31 | +14.5% | 1.83 | -5.7% | 73 |
+| persist_gate | 2026-01..2026-08 | 2026-01-02..2026-08-28 | +7.0% | 0.82 | -9.8% | 91 |
+| vov_gate | 2025-01..2025-06 | 2025-01-02..2025-06-30 | -0.4% | -0.03 | -9.6% | 59 |
+| vov_gate | 2025-07..2025-12 | 2025-07-01..2025-12-31 | +13.0% | 1.67 | -8.7% | 63 |
+| vov_gate | 2026-01..2026-08 | 2026-01-02..2026-08-28 | +6.5% | 0.73 | -8.2% | 94 |
+| flow_momentum | 2025-01..2025-06 | 2025-01-02..2025-06-30 | -0.1% | 0.05 | -11.8% | 68 |
+| flow_momentum | 2025-07..2025-12 | 2025-07-01..2025-12-31 | +24.2% | 2.61 | -4.7% | 89 |
+| flow_momentum | 2026-01..2026-08 | 2026-01-02..2026-08-28 | +9.4% | 0.94 | -10.4% | 132 |
 
 ## 2. Deployment gates
 
@@ -48,6 +60,10 @@ Data: 2024-06-03 -> 2026-08-28 (IEX feed, next-open execution, 5 bps slippage). 
 | fast_momentum | 0.20 | 1.08 | all pass | DEPLOY |
 | tight_stops | 0.47 | 0.88 | all pass | DEPLOY |
 | conservative | 0.15 | 1.04 | all pass | DEPLOY |
+| rho_gate | 0.17 | 0.83 | every fold Sharpe > 0 | REJECT |
+| persist_gate | 0.39 | 0.84 | every fold Sharpe > 0 | REJECT |
+| vov_gate | 0.32 | 0.79 | every fold Sharpe > 0 | REJECT |
+| flow_momentum | 0.42 | 1.20 | all pass | DEPLOY |
 
 ## 3. Parameter sensitivity (champion: apex_hybrid, full period)
 
@@ -77,3 +93,17 @@ Sensitivity plateau: **PASS** (every run must keep Sharpe >= 0.3)
 ## Verdict
 
 Champion **apex_hybrid** (hybrid core+pullback, base params): **CLEARED FOR LIVE DEPLOYMENT**
+
+## 4. Round 3 — novel-alpha hypotheses + champion promotion
+
+| hypothesis | IS Sharpe | OOS Sharpe | verdict |
+|---|---|---|---|
+| flow_momentum | 0.42 | 1.20 | DEPLOY -> promoted to live ranking |
+| rho_gate | 0.17 | 0.83 | REJECT (2025-H1 fold Sharpe -0.07) |
+| persist_gate | 0.39 | 0.84 | REJECT (2025-H1 fold Sharpe -0.12) |
+| vov_gate | 0.32 | 0.79 | REJECT (2025-H1 fold Sharpe -0.03) |
+
+flow_momentum post-promotion sensitivity (FLOW_MOMENTUM on, 18 perturbations,
+full period): all profitable, Sharpe range 0.49-1.03, base +36.5% / Sharpe 0.98
+vs apex_hybrid +32.5% / 0.86. Plateau PASS. Multiple-comparison caveat: 13
+variants tested; live paper ledger is the final arbiter.
