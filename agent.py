@@ -129,7 +129,8 @@ def run_cycle(dry_run=False):
     new_bar = bar_date is not None and bar_date != state.get("last_bar_date")
 
     on = strategy.regime_on(bars_by_sym[config.REGIME_SYMBOL])
-    scores = strategy.rank_universe(bars_by_sym)
+    scores = (strategy.rank_universe_flow(bars_by_sym) if config.FLOW_MOMENTUM
+              else strategy.rank_universe(bars_by_sym))
     core_set = strategy.core_targets(scores, on)
 
     log(f"cycle: open={market_open} equity=${equity:,.2f} cash=${cash:,.2f} "
