@@ -63,7 +63,10 @@ ATR_PERIOD = 14
 AUTOCORR_GATE = os.environ.get("APEX_AUTOCORR_GATE", "false").lower() == "true"
 PERSIST_GATE = os.environ.get("APEX_PERSIST_GATE", "false").lower() == "true"
 VOV_GATE = os.environ.get("APEX_VOV_GATE", "false").lower() == "true"
-FLOW_MOMENTUM = os.environ.get("APEX_FLOW_MOMENTUM", "true").lower() == "true"
+_flow_env = os.environ.get("APEX_FLOW_MOMENTUM", "true")
+RANK_MODE = os.environ.get("APEX_RANK_MODE") or \
+    ("flow" if _flow_env.lower() == "true" else "classic")
+FLOW_MOMENTUM = RANK_MODE == "flow"  # back-compat for older tooling
 TRAIL_ATR_MULT = 2.5     # trailing stop distance in ATRs
 REGIME_SMA = 200         # SPY above SMA200 => risk-on
 

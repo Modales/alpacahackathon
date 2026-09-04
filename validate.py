@@ -45,11 +45,12 @@ BASE = {k: getattr(config, k) for k in
         ("MODE", "MOM_FAST", "MOM_SLOW", "MOM_TOP_N", "RSI_ENTRY", "RSI_EXIT",
          "TRAIL_ATR_MULT", "CORE_SLOTS", "PULLBACK_SLOTS", "RISK_PER_TRADE",
          "MAX_POS_PCT", "REGIME_SMA", "PULLBACK_NEED_MOM", "AUTOCORR_GATE",
-         "PERSIST_GATE", "VOV_GATE", "FLOW_MOMENTUM")}
-# The harness always ablates from a flags-off base, regardless of what the
-# live deployment currently uses — variants must name their flags explicitly.
-for _f in ("AUTOCORR_GATE", "PERSIST_GATE", "VOV_GATE", "FLOW_MOMENTUM"):
+         "PERSIST_GATE", "VOV_GATE", "RANK_MODE")}
+# The harness always ablates from a flags-off / classic-ranking base,
+# regardless of what the live deployment uses — variants name their flags.
+for _f in ("AUTOCORR_GATE", "PERSIST_GATE", "VOV_GATE"):
     BASE[_f] = False
+BASE["RANK_MODE"] = "classic"
 
 VARIANTS = {
     "apex_hybrid":      {},
@@ -66,7 +67,11 @@ VARIANTS = {
     "rho_gate":         {"AUTOCORR_GATE": True},   # lag-1 autocorr < 0 required
     "persist_gate":     {"PERSIST_GATE": True},    # sign-change z > 0 required
     "vov_gate":         {"VOV_GATE": True},        # vol-of-vol pct > 2/3 required
-    "flow_momentum":    {"FLOW_MOMENTUM": True},   # intraday-flow ranking
+    "flow_momentum":    {"RANK_MODE": "flow"},     # intraday-flow ranking (LIVE)
+    # research round 4: ranking hypotheses -------------------------------
+    "accel":            {"RANK_MODE": "accel"},    # momentum + acceleration
+    "riskadj":          {"RANK_MODE": "riskadj"},  # vol-normalized momentum
+    "gappen":           {"RANK_MODE": "gappen"},   # gap-share penalty
 }
 
 SENS_GRID = {
@@ -131,7 +136,8 @@ def main():
                                          if s != config.REGIME_SYMBOL]
     etf_data = {s: data_all[s] for s in etf_syms if s in data_all}
 
-    variants = {"apex_hybrid": {}} if args.quick else VARIANTS
+    variants = {"live_flow": {"RANK_MODE": "flow"}} if args.quick else VARIANTS
+    champ_key = "live_flow" if args.quick else "apex_hybrid"
     folds = FOLDS[-2:] if args.quick else FOLDS
     lines = ["# APEX validation report",
              f"\nData: {TRADE_START} -> {END} (IEX feed, next-open execution, "
@@ -179,28 +185,30 @@ def main():
                      f"| {'DEPLOY' if ok else 'REJECT'} |")
 
     # ---------------- sensitivity --------------------------------------
-    lines.append("\n## 3. Parameter sensitivity (champion: apex_hybrid, full period)\n")
-    lines.append("| parameter | value | return | Sharpe | maxDD |")
-    lines.append("|---|---|---|---|---|")
+    # Full grid only in full mode; --quick is the nightly health check.
     sens_ok = True
-    for param, values in SENS_GRID.items():
-        for v in values:
-            apply({"MODE": "hybrid", param: v})
-            eq, trades = backtest.run(data_all)
-            st = window_stats(eq, trades, TRADE_START, END)
-            flag = "" if st["sharpe"] >= GATE_SENS_SHARPE else "  <-- FAILS gate"
-            if st["sharpe"] < GATE_SENS_SHARPE:
-                sens_ok = False
-            mark = " *(base)*" if v == BASE.get(param) else ""
-            lines.append(f"| {param} | {v}{mark} | {fmt_pct(st['ret'])} "
-                         f"| {st['sharpe']:.2f} | {st['maxdd']:.1%} |{flag}")
-    lines.append(f"\nSensitivity plateau: **{'PASS' if sens_ok else 'FAIL'}** "
-                 f"(every run must keep Sharpe >= {GATE_SENS_SHARPE})")
+    if not args.quick:
+        lines.append("\n## 3. Parameter sensitivity (live champion: flow ranking, full period)\n")
+        lines.append("| parameter | value | return | Sharpe | maxDD |")
+        lines.append("|---|---|---|---|---|")
+        for param, values in SENS_GRID.items():
+            for v in values:
+                apply({"MODE": "hybrid", "RANK_MODE": "flow", param: v})
+                eq, trades = backtest.run(data_all)
+                st = window_stats(eq, trades, TRADE_START, END)
+                flag = "" if st["sharpe"] >= GATE_SENS_SHARPE else "  <-- FAILS gate"
+                if st["sharpe"] < GATE_SENS_SHARPE:
+                    sens_ok = False
+                mark = " *(base)*" if v == BASE.get(param) else ""
+                lines.append(f"| {param} | {v}{mark} | {fmt_pct(st['ret'])} "
+                             f"| {st['sharpe']:.2f} | {st['maxdd']:.1%} |{flag}")
+        lines.append(f"\nSensitivity plateau: **{'PASS' if sens_ok else 'FAIL'}** "
+                     f"(every run must keep Sharpe >= {GATE_SENS_SHARPE})")
 
     apply({})  # restore base params
-    champion_ok = verdicts.get("apex_hybrid", (False,))[0] and sens_ok
+    champion_ok = verdicts.get(champ_key, (False,))[0] and sens_ok
     lines.append(f"\n## Verdict\n")
-    lines.append(f"Champion **apex_hybrid** (hybrid core+pullback, base params): "
+    lines.append(f"Champion **{champ_key}**: "
                  f"**{'CLEARED FOR LIVE DEPLOYMENT' if champion_ok else 'NOT CLEARED — do not deploy'}**")
 
     report = "\n".join(lines)
