@@ -3,21 +3,21 @@
 **lablab.ai × Alpaca — AI Trading Agents Hackathon** · Track: Options Alpha Agents
 
 APEX is an autonomous, fully rule-based trading agent running 24/7 on Alpaca's
-paper API. It combines a validated equity engine (intraday-flow momentum core +
-RSI(2) pullback) with an options income overlay (cash-secured puts + covered
-calls — the "wheel") driven by the same signals. Every decision is produced by
-explicit, inspectable code shared verbatim between the backtester, the
-validation harness, and the live agent. Nothing deploys unless it clears
-out-of-sample gates.
+paper API. It combines a validated equity engine (momentum core + RSI(2)
+pullback) with an options income overlay (cash-secured puts + covered calls —
+the "wheel") driven by the same signals. Every decision is produced by explicit,
+inspectable code shared verbatim between the backtester, the validation
+harness, and the live agent. Nothing deploys unless it clears out-of-sample
+gates.
 
 ## Judging-criteria map
 
 | Criterion | Where it lives |
 |---|---|
-| **P&L Performance** | Live equity curve (`state/equity.csv`, `report.png`), trade ledger (`state/trades.csv`), backtest + OOS results below |
-| **Technology Implementation** | Dependency-free REST client w/ retries, official `alpaca-py` SDK reconciliation, walk-forward harness, disk-cached data layer, idempotent agent loop, scheduled 2×/day via cron automation |
-| **Creativity & Originality** | Novel-alpha research lab (round 3 below): intraday-flow momentum ranking deployed; 3 original gate hypotheses tested and honestly rejected; signal-keyed options wheel (CSPs on pullback dips, covered calls on 100+ sh winners) |
-| **Presentation & Execution** | This README, `validation_report.md`, `backtest_equity.svg`, `report.py` live charts |
+| **P&L Performance** | Live equity curve (`state/equity.csv`, `report.png`), trade ledger (`state/trades.csv`), backtest + OOS results below, [LIVE.md](LIVE.md) journal, [dashboard.html](dashboard.html) demo app |
+| **Technology Implementation** | Dependency-free REST client w/ retries, official `alpaca-py` SDK reconciliation, official MCP server verification (`scripts/mcp_verify.py`), walk-forward harness, disk-cached data layer, idempotent agent loop, scheduled 2×/day via cron automation |
+| **Creativity & Originality** | Signal-keyed options wheel; anti-overfitting research lab that *rejects* most strategies it tests; novel intraday-flow momentum signal (round 3) |
+| **Presentation & Execution** | This README, `validation_report.md`, `backtest_equity.svg`, `deck/` slide deck, `WRITEUP.md`, `dashboard.html` |
 
 ## Strategy
 
@@ -55,7 +55,7 @@ trailing stops checked daily **and intraday**; −2.5% daily kill switch.
 
 | variant | IS Sharpe | OOS Sharpe | verdict |
 |---|---|---|---|
-| **apex_hybrid** | 0.26 | **1.11** | ✅ DEPLOY — all gates pass |
+| **apex_hybrid** (deployed) | 0.26 | **1.11** | ✅ DEPLOY — all gates pass |
 | **etf_rotation** (alternate) | 0.39 | **1.10** | ✅ DEPLOY-able |
 | fast_momentum | 0.20 | 1.08 | ✅ DEPLOY-able |
 | conservative | 0.15 | 1.04 | ✅ DEPLOY-able |
@@ -89,6 +89,19 @@ the live paper ledger is the final arbiter. The three rejected gates remain in
 `strategy.py` as documented negative results. Revert with
 `APEX_FLOW_MOMENTUM=false`.
 
+### Round 4 — ranking hypotheses (lesson applied: rankings > gates)
+
+| hypothesis | idea | IS → OOS Sharpe | verdict |
+|---|---|---|---|
+| accel | momentum + acceleration (2nd derivative boost) | 0.98 → **0.34** | ❌ REJECT — textbook overfit: in-sample star, OOS collapse |
+| riskadj | vol-normalized momentum (smooth trenders) | 0.42 → 1.11 | ❌ REJECT — best single fold of the round (Sharpe 2.70) but a negative 2025-H1 fold disqualifies it |
+| gappen | gap-share penalty: `score × (1 − overnight\|move\| share)` | −0.12 → **1.02** | ✅ DEPLOY-able alternate (does not dethrone flow's 1.20) |
+
+Total across 4 rounds: **16 variants tested, 6 cleared, 10 rejected.** The live
+ranking remains `flow` (`APEX_RANK_MODE=accel|riskadj|gappen|classic` to
+switch). accel is the showcase negative result — the gates caught a parameter
+spike that in-sample-only testing would have shipped.
+
 **Backtest, champion config (2024-06 → 2026-08, next-open fills, 5 bps slippage):**
 +38.4% total return, Sharpe 1.51, Sortino 2.09, maxDD −10.8%, 250 trades,
 53% win rate, profit factor 1.60 — matching SPY's return with ~2/3 of the
@@ -108,7 +121,7 @@ historical option-chain backtests (no free historical chains).
 ```
 config.py           all parameters (secrets via .env, never committed)
 alpaca_client.py    dependency-free REST wrapper (trading + data, retries)
-strategy.py         indicators & rules + novel-alpha lab — pure functions
+strategy.py         indicators & rules — pure functions (backtest == live)
 risk.py             ATR sizing, trailing stops, guards, kill switch
 options_overlay.py  CSP + covered-call selection, profit-take management
 reconcile.py        independent position check via official alpaca-py SDK
@@ -117,6 +130,10 @@ backtest.py         event-driven backtester -> stats + equity chart
 validate.py         walk-forward + sensitivity + deployment gates
 agent.py            live agent: one idempotent cycle per invocation
 report.py           live P&L report + chart
+journal.py          LIVE.md trading journal generator
+dashboard.py        single-file demo app (dashboard.html) regenerator
+scripts/mcp_verify.py  official MCP server end-to-end verification
+deck/               slide deck source (pptd)
 state/              runtime state/logs (gitignored)
 ```
 
@@ -124,9 +141,9 @@ state/              runtime state/logs (gitignored)
 regime + ranks + RSI(2)/ATR on the latest completed bar → exits first
 (intraday stops every run) → core entries → pullback entries as **CSPs when a
 liquid contract exists, stock otherwise** → covered calls → profit-take orders
-verified → equity snapshot + full decision log. Idempotent per bar; no-ops
-when the market is closed. Scheduled by a cron automation at **09:47 and
-15:47 America/New_York, Mon–Fri**.
+verified → equity snapshot + full decision log + journal + dashboard refresh.
+Idempotent per bar; no-ops when the market is closed. Scheduled by a cron
+automation at **09:47 and 15:47 America/New_York, Mon–Fri**.
 
 ## Running it
 
@@ -138,6 +155,20 @@ python agent.py              # one live cycle
 python backtest.py           # reproduce backtest + chart
 python validate.py           # re-run anti-overfitting harness
 python report.py             # live P&L report
+python dashboard.py          # regenerate the demo app
+python scripts/mcp_verify.py # verify via official MCP server
+```
+
+## Alpaca MCP server
+
+The official `alpaca-mcp-server` (v3.4.7, 72 tools) is wired in and verified
+end-to-end: `python scripts/mcp_verify.py` spawns the server over stdio and
+pulls account + positions through the MCP path — see `docs/mcp_verification.txt`.
+To drive the account conversationally, add to your MCP client config:
+
+```json
+{ "mcpServers": { "alpaca": { "command": "alpaca-mcp-server",
+  "env": { "ALPACA_API_KEY": "...", "ALPACA_SECRET_KEY": "..." } } } }
 ```
 
 ## Roadmap
@@ -145,11 +176,5 @@ python report.py             # live P&L report
 - Deploy `etf_rotation` as a second validated sleeve on a separate sub-ledger
 - Short-side momentum (shorting enabled on the account)
 - Walk-forward *re-fitting* schedule (currently params are frozen a priori)
-- Alpaca MCP server wiring for conversational control (`mcp.json` snippet below)
-
-```json
-{ "mcpServers": { "alpaca": { "command": "uvx", "args": ["alpaca-mcp-server"],
-  "env": { "APCA_API_KEY_ID": "...", "APCA_API_SECRET_KEY": "..." } } } }
-```
 
 *Paper trading only. Not investment advice.*
