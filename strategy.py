@@ -192,6 +192,69 @@ def rank_universe_flow(bars_by_symbol):
     return dict(sorted(scores.items(), key=lambda kv: kv[1], reverse=True))
 
 
+# --- round 4: ranking hypotheses ---------------------------------------------
+
+def accel_score(bars):
+    """Momentum + acceleration: base score plus 0.5x the change in the fast
+    momentum leg over the last MOM_FAST bars (second-derivative boost)."""
+    closes = [b["c"] for b in bars]
+    if len(closes) < config.MOM_SLOW + config.MOM_FAST + 1:
+        return None
+    base = momentum_score(closes)
+    r_now = closes[-1] / closes[-1 - config.MOM_FAST] - 1.0
+    r_prev = closes[-1 - config.MOM_FAST] / closes[-1 - 2 * config.MOM_FAST] - 1.0
+    return base + 0.5 * (r_now - r_prev)
+
+
+def riskadj_score(bars):
+    """Vol-normalized momentum: base score divided by 21d realized vol.
+    Rewards smooth accumulation over violent chops at equal return."""
+    closes = [b["c"] for b in bars]
+    if len(closes) < config.MOM_SLOW + 1:
+        return None
+    base = momentum_score(closes)
+    rets = [closes[i] / closes[i - 1] - 1.0 for i in range(-config.MOM_FAST, 0)]
+    mu = sum(rets) / len(rets)
+    vol = (sum((r - mu) ** 2 for r in rets) / len(rets)) ** 0.5
+    return base / vol if vol > 0 else None
+
+
+def gap_pen_score(bars):
+    """Gap-share penalty: base score x (1 - gap_share), where gap_share is the
+    overnight |move| share of total |move| over MOM_SLOW days. Gap-dominated
+    momentum is lower quality than intraday-driven momentum."""
+    closes = [b["c"] for b in bars]
+    if len(bars) < config.MOM_SLOW + 1:
+        return None
+    base = momentum_score(closes)
+    gap = tot = 0.0
+    for i in range(-config.MOM_SLOW, 0):
+        o, c, pc = bars[i]["o"], bars[i]["c"], bars[i - 1]["c"]
+        if o > 0 and pc > 0:
+            gap += abs(o / pc - 1.0)
+            tot += abs(o / pc - 1.0) + abs(c / o - 1.0)
+    if tot <= 0:
+        return None
+    return base * (1.0 - gap / tot)
+
+
+_RANKERS = {"classic": None, "flow": intraday_flow_score, "accel": accel_score,
+            "riskadj": riskadj_score, "gappen": gap_pen_score}
+
+
+def rank_universe_mode(bars_by_symbol):
+    """Rank the universe with the scoring function selected by RANK_MODE."""
+    fn = _RANKERS.get(getattr(config, "RANK_MODE", "classic"))
+    if fn is None:
+        return rank_universe(bars_by_symbol)
+    scores = {}
+    for sym, bars in bars_by_symbol.items():
+        s = fn(bars)
+        if s is not None:
+            scores[sym] = s
+    return dict(sorted(scores.items(), key=lambda kv: kv[1], reverse=True))
+
+
 def evaluate_symbol(sym, bars, scores):
     """Return dict with indicators + entry/exit flags for one symbol."""
     closes = [b["c"] for b in bars]

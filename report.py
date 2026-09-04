@@ -54,14 +54,13 @@ def main():
         x = pd.to_datetime(eq["timestamp"])
         ax.plot(x, eq["equity"], lw=1.8, color="#6C5CE7", label="APEX live equity")
         ax.axhline(equity0, color="#B2BEC3", lw=1, ls="--", label=f"start ${equity0:,.0f}")
+        eq_ts = pd.to_datetime(eq["timestamp"])
         for _, t in trades.iterrows():
             ts = pd.to_datetime(t["timestamp"])
-            near = eq.iloc[(eq["timestamp"] - str(ts)).abs().argsort()[:1]] \
-                if "timestamp" in eq else None
-            y = float(near["equity"].iloc[0]) if near is not None and len(near) else None
-            if y:
-                ax.scatter([ts], [y], marker="^" if t["side"] == "buy" else "v",
-                           c="#00B894" if t["side"] == "buy" else "#D63031", s=40, zorder=5)
+            idx = (eq_ts - ts).abs().argsort().iloc[0]
+            y = float(eq["equity"].iloc[idx])
+            ax.scatter([ts], [y], marker="^" if t["side"] == "buy" else "v",
+                       c="#00B894" if t["side"] == "buy" else "#D63031", s=40, zorder=5)
         ax.legend(loc="upper left")
     else:
         ax.text(0.5, 0.5, "No live equity data yet — agent has not run",
